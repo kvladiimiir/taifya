@@ -8,6 +8,10 @@
 #include <algorithm>
 #include <map>
 
+#include <boost/graph/graphviz.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/iteration_macros.hpp>
+
 using namespace std;
 
 const string TYPE_MOORE = "moore";
@@ -33,6 +37,81 @@ void PrintMatrixInFile(vector<vector<string>>& matrix, int numRows, int numCol)
 		}
 		fileOutput << '\n';
 	}
+}
+
+void WriteGraphMoore(vector<vector<string>>& matrix, int numRows, int numCol)
+{
+	using Edge = pair<int, int>;
+	using Graph = boost::adjacency_list< boost::vecS,
+		boost::vecS, boost::directedS,
+		boost::property<boost::vertex_color_t,
+		boost::default_color_type>,
+		boost::property< boost::edge_weight_t, string>
+	>;
+	ofstream fout("mooreGraph.dot");
+
+	vector<Edge> edges;
+	int sizeEdge = (numRows - 1) * numCol;
+	edges.resize(sizeEdge);
+	vector<string> weights(sizeEdge);
+	int k = 0;
+	for (int i = 1; i < numRows; i++)
+	{
+		for (int j = 0; j < numCol; j++)
+		{
+			string argument = matrix[i][j];
+			char state = argument[1];
+			int param = (int)state - 48;
+			edges[k] = make_pair(j, param);
+			weights[k] = 'x' + to_string(i);
+			k++;
+		}
+	}
+
+	Graph graph(edges.begin(), edges.end(), weights.begin(), numCol);
+	boost::dynamic_properties dp;
+	dp.property("label", boost::get(boost::edge_weight, graph));
+	dp.property("node_id", boost::get(boost::vertex_index, graph));
+
+	write_graphviz_dp(fout, graph, dp);
+}
+
+void WriteGraphMealy(vector<vector<string>>& matrix, int numRows, int numCol)
+{
+	using Edge = pair<int, int>;
+	using Graph = boost::adjacency_list< boost::vecS,
+		boost::vecS, boost::directedS,
+		boost::property<boost::vertex_color_t,
+		boost::default_color_type>,
+		boost::property< boost::edge_weight_t, string>
+	>;
+	ofstream fout("mealyGraph.dot");
+
+	vector<Edge> edges;
+	int sizeEdge = numRows * numCol;
+	edges.resize(sizeEdge);
+	vector<string> weights(sizeEdge);
+	int k = 0;
+	for (int i = 0; i < numRows; i++)
+	{
+		for (int j = 0; j < numCol; j++)
+		{
+			string argument = matrix[i][j];
+			char stateS = argument[1];
+			char stateY = argument[3];
+			int paramS = (int)stateS - 48;
+			edges[k] = make_pair(j, paramS);
+			weights[k] = 'x' + to_string(i) + 'y' + stateY;
+			k++;
+		}
+	}
+
+	Graph graph(edges.begin(), edges.end(), weights.begin(), numCol);
+	boost::dynamic_properties dp;
+	dp.property("label", boost::get(boost::edge_weight, graph));
+	dp.property("node_id", boost::get(boost::vertex_index, graph));
+
+	write_graphviz_dp(fout, graph, dp);
 }
 
 void MealyIntoMoore(ifstream &fileInput, int nX, int nY, int nC)
@@ -104,6 +183,7 @@ void MealyIntoMoore(ifstream &fileInput, int nX, int nY, int nC)
 	}
 
 	PrintMatrixInFile(resultMatrix, nX + 1, sizeZVector);
+	WriteGraphMoore(resultMatrix, nX + 1, sizeZVector);
 }
 
 void MooreIntoMealy(ifstream &fileInput, int nX, int nY, int nC)
@@ -134,6 +214,7 @@ void MooreIntoMealy(ifstream &fileInput, int nX, int nY, int nC)
 	}
 
 	PrintMatrixInFile(outputMealyMatrix, nX, nC);
+	WriteGraphMealy(outputMealyMatrix, nX, nC);
 }
 
 bool CheckNum(int num)
