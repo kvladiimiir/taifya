@@ -27,6 +27,16 @@ struct ZParameter
 	int Y;
 };
 
+struct VertexProps
+{
+	string label;
+};
+
+struct EdgeProps
+{
+	string label;
+};
+
 void PrintMatrixInFile(vector<vector<string>>& matrix, int numRows, int numCol)
 {
 	for (int i = 0; i < numRows; i++)
@@ -39,22 +49,22 @@ void PrintMatrixInFile(vector<vector<string>>& matrix, int numRows, int numCol)
 	}
 }
 
+
+
 void WriteGraphMoore(vector<vector<string>>& matrix, int numRows, int numCol)
 {
 	using Edge = pair<int, int>;
-	using Graph = boost::adjacency_list< boost::vecS,
-		boost::vecS, boost::directedS,
-		boost::property<boost::vertex_color_t,
-		boost::default_color_type>,
-		boost::property< boost::edge_weight_t, string>
-	>;
+	using Graph = boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, VertexProps, EdgeProps>;
+
 	ofstream fout("mooreGraph.dot");
 
-	vector<Edge> edges;
-	int sizeEdge = (numRows - 1) * numCol;
-	edges.resize(sizeEdge);
-	vector<string> weights(sizeEdge);
-	int k = 0;
+	Graph graph;
+	vector<Graph::vertex_descriptor> vertices;
+	for (int j = 0; j < numCol; ++j)
+	{
+		string vertexLabel = 'q' + to_string(j) + matrix[0][j];
+		vertices.push_back(boost::add_vertex({ vertexLabel }, graph));
+	}
 	for (int i = 1; i < numRows; i++)
 	{
 		for (int j = 0; j < numCol; j++)
@@ -62,15 +72,14 @@ void WriteGraphMoore(vector<vector<string>>& matrix, int numRows, int numCol)
 			string argument = matrix[i][j];
 			char state = argument[1];
 			int param = (int)state - 48;
-			edges[k] = make_pair(j, param);
-			weights[k] = 'x' + to_string(i);
-			k++;
+			string weights = 'x' + to_string(i);
+			boost::add_edge(vertices[j], vertices[param], { weights }, graph);
 		}
 	}
 
-	Graph graph(edges.begin(), edges.end(), weights.begin(), numCol);
 	boost::dynamic_properties dp;
-	dp.property("label", boost::get(boost::edge_weight, graph));
+	dp.property("label", boost::get(&VertexProps::label, graph));
+	dp.property("label", boost::get(&EdgeProps::label, graph));
 	dp.property("node_id", boost::get(boost::vertex_index, graph));
 
 	write_graphviz_dp(fout, graph, dp);
@@ -79,19 +88,18 @@ void WriteGraphMoore(vector<vector<string>>& matrix, int numRows, int numCol)
 void WriteGraphMealy(vector<vector<string>>& matrix, int numRows, int numCol)
 {
 	using Edge = pair<int, int>;
-	using Graph = boost::adjacency_list< boost::vecS,
-		boost::vecS, boost::directedS,
-		boost::property<boost::vertex_color_t,
-		boost::default_color_type>,
-		boost::property< boost::edge_weight_t, string>
-	>;
+	using Graph = boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, VertexProps, EdgeProps>;
+
 	ofstream fout("mealyGraph.dot");
 
-	vector<Edge> edges;
-	int sizeEdge = numRows * numCol;
-	edges.resize(sizeEdge);
-	vector<string> weights(sizeEdge);
-	int k = 0;
+	Graph graph;
+	vector<Graph::vertex_descriptor> vertices;
+	for (int j = 0; j < numCol; ++j)
+	{
+		string vertexLabel = 'q' + to_string(j);
+		vertices.push_back(boost::add_vertex({ vertexLabel }, graph));
+	}
+
 	for (int i = 0; i < numRows; i++)
 	{
 		for (int j = 0; j < numCol; j++)
@@ -100,15 +108,14 @@ void WriteGraphMealy(vector<vector<string>>& matrix, int numRows, int numCol)
 			char stateS = argument[1];
 			char stateY = argument[3];
 			int paramS = (int)stateS - 48;
-			edges[k] = make_pair(j, paramS);
-			weights[k] = 'x' + to_string(i) + 'y' + stateY;
-			k++;
+			string weights = 'x' + to_string(i) + 'y' + stateY;
+			boost::add_edge(vertices[j], vertices[paramS], { weights }, graph);
 		}
 	}
 
-	Graph graph(edges.begin(), edges.end(), weights.begin(), numCol);
 	boost::dynamic_properties dp;
-	dp.property("label", boost::get(boost::edge_weight, graph));
+	dp.property("label", boost::get(&VertexProps::label, graph));
+	dp.property("label", boost::get(&EdgeProps::label, graph));
 	dp.property("node_id", boost::get(boost::vertex_index, graph));
 
 	write_graphviz_dp(fout, graph, dp);
